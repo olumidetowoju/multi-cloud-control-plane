@@ -2,9 +2,6 @@
 # 🌐 Module 1 — Identity Fabric (The Foundation of the Multi-Cloud Control Plane)  
 **Identity • SAML • SCIM • Federation • Zero Trust • Workforce Identity**
 
-<p align="center">
-  <img src="https://github.com/S3curethecloud/stc-assets/blob/main/logos/stc-shield.png" width="140" alt="STC Identity Fabric"/>
-</p>
 
 ---
 
