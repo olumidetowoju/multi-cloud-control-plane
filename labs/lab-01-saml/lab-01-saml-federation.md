@@ -2,10 +2,6 @@
 # 🧪 Lab 01 — SAML Federation Between AWS IAM Identity Center and Microsoft Entra ID  
 **Hands-On: Identity Source Migration + SAML Authentication Trust**
 
-<p align="center">
-  <img src="https://github.com/S3curethecloud/stc-assets/blob/main/logos/stc-shield.png" width="140" alt="STC Lab Logo"/>
-</p>
-
 ---
 
 # ⭐ Objective
