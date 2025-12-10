@@ -1,288 +1,335 @@
-# 🧪 LAB 02 — LIVE DEPLOYMENT  
-# **SCIM Provisioning From Entra ID → AWS IAM Identity Center**  
-Automatic user + group lifecycle sync — real enterprise setup
+#️⃣ LAB 02 — SCIM Provisioning from Azure Entra ID → AWS IAM Identity Center  
+**StageCloud Academy — Updated 2025 Edition**
 
-
----
-
-# ⭐ WHY THIS LAB IS REQUIRED
-
-Your identity source is now **External (Microsoft Entra ID)**.  
-This changes everything:
-
-- AWS internal directory becomes **inactive**  
-- Users must come from **Entra via SCIM**  
-- SAML login cannot succeed until AWS **knows who the users are**  
-- SCIM is the **only** mechanism that creates user objects in AWS Identity Store  
-
-SCIM synchronizes:
-
-- Users  
-- Display names  
-- Emails  
-- Groups  
-- Group membership  
-- Updates  
-- Deletions  
-
-This is real enterprise identity lifecycle automation.
+> **Prerequisite:** Lab 01 (SAML Federation) must be completed successfully.
 
 ---
 
-# 🚀 LET’S BEGIN LAB 02 — LIVE
+## ⭐ 1. Overview
 
-# ⭐ STEP 1 — ENABLE SCIM IN AWS IAM IDENTITY CENTER
+In this lab, you will implement **SCIM automatic user provisioning**  
+from **Azure Entra ID → AWS IAM Identity Center**.
 
-Navigate:
+You will:
+
+- Exchange SAML metadata between Azure & AWS  
+- Connect Azure SCIM provisioning to AWS  
+- Provision multiple users automatically  
+- Assign permission sets  
+- Validate federated login  
+
+This is the **final step** in building your **Identity Fabric**.
+
+---
+
+## ⭐ 2. Prerequisites
+
+### From Lab 01:
+- AWS Identity Center set to **External IdP (Entra)**  
+- NameID → `user.mail` configured  
+- SAML federation fully functional  
+- Azure Enterprise App **AWS IAM Identity Center** created  
+
+### AWS Requirements:
+- IAM Identity Center enabled  
+- AWS Organizations root access  
+- SCIM provisioning **enabled**
+
+### Azure Requirements:
+- Azure Entra ID  
+- AWS Enterprise Application created  
+- Ability to assign users/groups to app  
+
+---
+
+## ⭐ 3. Part A — SAML Metadata Exchange (MANDATORY)
+
+> **SCIM will NOT work unless SAML metadata is exchanged properly.**
+
+### Step 3.1 — Download AWS SAML Metadata  
+AWS Console → IAM Identity Center →  
+**Settings → Identity Source → Change / View**
+
+Click **Download metadata file**
+
+Save as:
 
 ```
-AWS Console → IAM Identity Center → Settings → Automatic provisioning
+aws-idc-metadata.xml
 ```
 
-You will see a button:
+---
 
-👉 **Enable**
+### Step 3.2 — Upload AWS Metadata into Azure  
+Azure Portal → Entra ID → Enterprise Apps →  
+**AWS IAM Identity Center → Single Sign-On → SAML**
 
-Click **Enable**.
+Click:
 
-AWS will display:
+```
+Upload metadata file
+```
 
-- **SCIM endpoint (Tenant URL)**  
-- **SCIM Access Token (Secret Token)**  
-- **Token expiration timer**
+Azure auto-populates:
 
-Copy BOTH values:
+- Identifier  
+- Reply URLs  
+- Logout URLs  
+
+---
+
+### Step 3.3 — Configure NameID Claim  
+Azure → **Attributes & Claims → Edit**
+
+Set:
+
+| Setting | Value |
+|--------|--------|
+| NameID Format | EmailAddress |
+| Source Attribute | `user.mail` |
+
+> **#1 cause of federation failure:** Incorrect NameID.
+
+---
+
+### Step 3.4 — Download Azure Federation Metadata
+
+Click:
+
+```
+Download Federation Metadata XML
+```
+
+Save as:
+
+```
+azure-idp-metadata.xml
+```
+
+---
+
+### Step 3.5 — Upload Azure Metadata Back Into AWS  
+AWS → IAM Identity Center → Identity Source
+
+Upload:
+
+```
+azure-idp-metadata.xml
+```
+
+Click **Save**.
+
+> **SAML Federation is now complete.**
+
+---
+
+## ⭐ 4. Part B — Enable SCIM Provisioning in AWS
+
+AWS Console → IAM Identity Center →  
+**Settings → Automatic Provisioning**
+
+Click:
+
+```
+Enable
+```
+
+AWS displays:
+
+- **SCIM Tenant URL**  
+- **SCIM Access Token**
 
 Example:
 
 ```
-SCIM Endpoint:
-https://scim.us-east-1.amazonaws.com/d-9066178bc5/scim/v2/
-
-Access Token:
-eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ...
+https://scim.us-east-1.amazonaws.com/d-9a675141db/scim/v2/
+Token: eyJhbGciOiJ...
 ```
 
-You will paste these into Entra.
+> Copy both values — you will paste them into Azure.
 
 ---
 
-# ⭐ STEP 2 — OPEN THE AWS IAM IDENTITY CENTER ENTERPRISE APP IN ENTRA
+## ⭐ 5. Part C — Configure SCIM in Azure
 
-Navigate:
-
-```
-Azure Portal → Entra ID → Enterprise Applications → AWS IAM Identity Center
-```
-
-Select:
-
-👉 **Provisioning**
-
-You will see:
-
-`Provisioning Mode: Manual`
-
----
-
-# ⭐ STEP 3 — SWITCH PROVISIONING MODE TO AUTOMATIC
-
-Click:
-
-👉 **Edit Provisioning**
-
-Set:
-
-```
-Provisioning Mode → Automatic
-```
-
-A new form appears.
-
----
-
-# ⭐ STEP 4 — ENTER AWS SCIM DETAILS INTO ENTRA
+Azure Portal → Entra ID → Enterprise Apps →  
+**AWS IAM Identity Center → Provisioning**
 
 Under **Admin Credentials**:
 
 | Field | Value |
 |-------|--------|
-| Tenant URL | *AWS SCIM Endpoint* |
-| Secret Token | *AWS SCIM Token* |
-
-Example:
-
-```
-Tenant URL:
-https://scim.us-east-1.amazonaws.com/d-9066178bc5/scim/v2/
-```
+| Tenant URL | (AWS SCIM URL) |
+| Secret Token | (AWS SCIM Access Token) |
 
 Click:
 
-👉 **Test Connection**
-
-### ⭐ Expected Result:
-
-```
-Connection successful
-```
-
-If it fails, common causes:
-
-- Token expired  
-- Token missing characters  
-- Tenant URL missing trailing slash  
-- Wrong region  
-
-If needed → click **Regenerate Token** in AWS.
+✔ **Test Connection**  
+✔ **Save**  
+✔ **Start Provisioning**
 
 ---
 
-# ⭐ STEP 5 — SAVE THE CONFIGURATION
+## ⭐ 6. Part D — Create Azure Users (Updated UI)
 
-Click:
+Azure Portal → Entra ID → **Users → New User**
 
-👉 **Save**
+### **User 1 — Primary Architect**
+```
+Username: olumide.towoju@gmail.com
+First name: Olumide
+Last name: Towoju
+Display name: Olumide Towoju
+Password: Auto-generated
+```
 
-Entra reloads the provisioning settings.
+
+⚠ **SCIM requires FIRST + LAST NAME**  
+Missing → AWS returns:
+
+```
+400 BadRequest — "The attribute name is required"
+```
 
 ---
 
-# ⭐ STEP 6 — DEFINE WHAT GETS SYNCED
+## ⭐ 7. Part E — Assign Users to AWS Enterprise App
 
-Scroll to **Settings** → Choose:
-
-```
-Scope → Sync only assigned users and groups
-```
-
-This prevents syncing your entire organization (VERY important).
-
----
-
-# ⭐ STEP 7 — TURN ON PROVISIONING
-
-At the top:
-
-```
-Provisioning Status → On
-```
-
-Click:
-
-👉 **Save**
-
-Entra will begin provisioning on a 40-minute cycle unless forced manually.
-
----
-
-# ⭐ STEP 8 — FORCE A MANUAL SYNC (TO SEE RESULTS NOW)
-
-Click:
-
-👉 **Restart provisioning**  
-or  
-👉 **Start provisioning** (on first setup)
-
-This triggers an immediate SCIM push.
-
----
-
-# ⭐ STEP 9 — VERIFY USERS APPEAR IN AWS (LIVE)
-
-Navigate:
-
-```
-AWS Console → IAM Identity Center → Users
-```
-
-You should now see your Entra users:
-
-Example:
-
-```
-ola.omoniyi@yourtenant.onmicrosoft.com
-Status: Enabled
-Provisioned by: SCIM
-```
-
-🎉 **This is the moment SAML login becomes possible.**
-
----
-
-# ⭐ STEP 10 — ASSIGN PERMISSION SETS IN AWS
-
-Even though the user exists, AWS will show no access until a **Permission Set** is assigned.
-
-Navigate:
-
-```
-IAM Identity Center → AWS Accounts
-```
-
-Choose your AWS account → Click:
-
-👉 **Assign Users**
-
-Select your SCIM-provisioned user.
+Azure Portal → Entra ID → Enterprise Apps →  
+**AWS IAM Identity Center → Users and Groups → Add user**
 
 Assign:
 
-- **AdministratorAccess** (testing)  
-or  
-- **ReadOnlyAccess**  
+- `olumide.towoju@gmail.com`  
 
-Click **Submit**.
+> Only ASSIGNED users enter SCIM provisioning scope.
 
 ---
 
-# ⭐ STEP 11 — TEST FEDERATED LOGIN (LIVE)
+## ⭐ 8. Part F — Trigger SCIM Provisioning
 
-Open your AWS SSO URL:
+Azure → Enterprise Apps → AWS IAM Identity Center →  
+**Provisioning → Restart Provisioning**
+
+Check **Provisioning Logs**:
+
+Expected per user:
+
+- Import user → Success  
+- Determine if in scope → Success  
+- Match user → Success  
+- Perform Action → **Create — SUCCESS**  
+
+This means the user has been created in AWS Identity Store.
+
+---
+
+## ⭐ 9. Part G — Verify Users in AWS
+
+AWS Console → IAM Identity Center → **Users**
+
+Expected:
+
+### **User: Olumide Towoju**
+```
+Username: olumide.towoju@gmail.com
+Status: Enabled
+Created by: SCIM
+```
+
+> SCIM provisioning is now fully operational.
+
+---
+
+## ⭐ 10. Part H — Assign Permission Sets in AWS
+
+AWS Console → IAM Identity Center →  
+**AWS Accounts → Select Account → Assign Users**
+
+Assign:
+
+- Olumide Towoju  
+
+Choose Permission Set:
+
+✔ `AdministratorAccess` (for testing)
+
+AWS shows:
 
 ```
-https://d-9066178bc5.awsapps.com/start
+We reprovisioned your AWS account successfully and applied the updated permission set.
 ```
 
-Expected flow:
+---
 
-1. Redirect → **Entra login**  
-2. Enter email + password  
-3. MFA challenge (if required)  
-4. Redirect → AWS SSO  
-5. See **AWS Accounts page**  
-6. Click “Management Console” → Logged in as Entra user  
+## ⭐ 11. Part I — Validation (Live Authentication Test)
 
-🔥 This proves your **SAML + SCIM end-to-end federation** is working.
+Open the AWS SSO portal:
+
+```
+https://d-9a675141db.awsapps.com/start
+```
 
 ---
 
-# 🧪 TROUBLESHOOTING (LIVE LOGIC)
+### **Login Test: Architect**
+```
+Username: olumide.towoju@gmail.com
+Password: (reset on first login)
+```
 
-| Issue | Fix |
-|-------|------|
-| ❌ User not found | SCIM not started / NameID mismatch |
-| ❌ Access denied | No assigned Permission Set |
-| ❌ “Code isn’t right” | SCIM username mismatch |
-| ❌ Redirect loop | Wrong URL or metadata mismatch |
-| ❌ Test connection failed | Wrong token or wrong SCIM endpoint |
+Expected:
 
----
-
-# 🎉 LAB 02 SUCCESS CHECKLIST
-
-| Task | Status |
-|------|--------|
-| SCIM enabled in AWS | ✔ |
-| SCIM URL + Token copied | ✔ |
-| Entra Provisioning → Automatic | ✔ |
-| SCIM connection successful | ✔ |
-| Assigned Entra users | ✔ |
-| Forced provisioning run | ✔ |
-| User appears in AWS | ✔ |
-| Permission set assigned | ✔ |
-| SAML login successful | ✔ |
+- MFA required  
+- Access Portal loads  
+- Assigned AWS account visible  
+- Console access successful  
 
 ---
 
-# END OF LAB FILE
+### **Login Test: Architect**
+```
+Username: olumide.towoju@gmail.com
+Password: (reset on first login)
+```
+
+Expected:
+
+- Password reset  
+- MFA registration  
+- AWS Portal loads  
+- AWS Console login works  
+
+---
+
+## ⭐ 12. Screenshots to Capture (Binder Documentation)
+
+### Azure:
+- Provisioning logs (SUCCESS)  
+- App assignments  
+
+### AWS:
+- Identity Center → Users  
+- Permission Set assignments  
+- Access Portal screen  
+- Console header showing identity  
+
+---
+
+## ⭐ 13. Lab 02 — Completion Statement
+
+You have successfully deployed:
+
+✔ SAML federation (Lab 01)  
+✔ SCIM provisioning  
+✔ Multi-user identity sync  
+✔ AWS permission assignment  
+✔ Complete authentication flow  
+✔ MFA enforcement  
+✔ Multi-user SSO to AWS Console  
+
+🎉 **Your Identity Fabric is now fully operational across Entra → AWS.**
+
+---
+
+# ✅ **END OF LAB 02**
